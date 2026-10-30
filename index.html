@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlashMaster - Flashcards Visuelles & Dossiers</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        .no-select { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-200">
+
+    <!-- Header Navigation -->
+    <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20 shrink-0">
+                    <i class="fa-solid fa-layer-group text-lg sm:text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg sm:text-xl leading-none bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">FlashMaster</h1>
+                    <span class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">Révision par Dossiers & Photos</span>
+                </div>
+            </div>
+
+            <!-- View Tabs -->
+            <div class="flex items-center gap-1.5 sm:gap-2 bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl">
+                <button id="tab-study" onclick="switchTab('study')" class="px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm">
+                    <i class="fa-solid fa-graduation-cap"></i> <span>Réviser</span>
+                </button>
+                <button id="tab-manage" onclick="switchTab('manage')" class="px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-folder-tree"></i> <span class="hidden sm:inline">Mes Dossiers & Cartes</span>
+                    <span id="card-count-badge" class="px-1.5 py-0.5 text-[10px] sm:text-xs bg-slate-200 dark:bg-slate-600 rounded-full font-bold">0</span>
+                </button>
+            </div>
+
+            <!-- Actions Controls -->
+            <div class="flex items-center gap-1.5 sm:gap-2">
+                <button onclick="toggleDarkMode()" title="Changer de thème" class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                    <i id="theme-icon" class="fa-solid fa-moon text-xs sm:text-sm"></i>
+                </button>
+                <button onclick="openExportModal()" title="Export / Import JSON" class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-file-export text-xs sm:text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-20 right-4 z-50 transform translate-y-[-100%] opacity-0 transition-all duration-300 bg-slate-800 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 text-sm font-medium border border-slate-700">
+        <i id="toast-icon" class="fa-solid fa-circle-info text-sky-400"></i>
+        <span id="toast-msg">Message</span>
+    </div>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col justify-between">
+
+        <!-- ================= STUDY MODE ================= -->
+        <section id="section-study" class="flex-1 flex flex-col justify-between items-center max-w-2xl mx-auto w-full">
+            
+            <!-- Controls & Folder Selector Top Bar -->
+            <div class="w-full space-y-3 mb-2">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <!-- Folder Filter Selector -->
+                    <div class="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 shadow-sm">
+                        <i class="fa-solid fa-folder text-amber-500 text-xs sm:text-sm"></i>
+                        <select id="study-folder-select" onchange="onStudyFolderChange()" class="bg-transparent text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
+                            <option value="ALL">📁 Tous les dossiers</option>
+                        </select>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="shuffleDeck()" class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5 transition shadow-sm">
+                            <i class="fa-solid fa-shuffle text-sky-500"></i> <span class="hidden sm:inline">Mélanger</span>
+                        </button>
+                        <button onclick="resetStudyProgress()" class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5 transition shadow-sm">
+                            <i class="fa-solid fa-rotate-left text-amber-500"></i> <span class="hidden sm:inline">Recommencer</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Score Banner -->
+                <div class="flex items-center justify-between text-xs sm:text-sm font-semibold px-1">
+                    <span id="progress-text" class="text-slate-500 dark:text-slate-400">Carte 0 / 0</span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> <span id="score-success">0</span></span>
+                        <span class="text-rose-600 dark:text-rose-400 flex items-center gap-1"><i class="fa-solid fa-circle-xmark"></i> <span id="score-fail">0</span></span>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden flex">
+                    <div id="progress-bar-success" class="bg-emerald-500 h-full w-0 transition-all duration-300"></div>
+                    <div id="progress-bar-fail" class="bg-rose-500 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Flashcard Display Container -->
+            <div id="flashcard-container" class="w-full flex-1 min-h-[300px] h-[45vh] sm:h-[430px] max-h-[500px] my-auto relative perspective-1000 group cursor-pointer no-select">
+                
+                <!-- Empty Deck Message -->
+                <div id="empty-deck-msg" class="hidden absolute inset-0 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center p-6 text-center bg-white/50 dark:bg-slate-800/50">
+                    <div class="w-14 h-14 rounded-full bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400 flex items-center justify-center text-2xl mb-3">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-800 dark:text-white mb-1">Aucune carte dans ce dossier</h3>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-sm mb-4">Ajoutez des cartes ou changez de dossier sélectionné.</p>
+                    <button onclick="switchTab('manage'); openAddModal()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-xl shadow-lg shadow-sky-600/30 transition text-xs sm:text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Créer une carte
+                    </button>
+                </div>
+
+                <!-- SESSION END SUMMARY OVERLAY -->
+                <div id="summary-screen" class="hidden absolute inset-0 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-center justify-center text-center shadow-xl z-20">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center text-3xl mb-4 shadow-lg shadow-sky-500/30">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800 dark:text-white mb-1">Session terminée !</h3>
+                    <p id="summary-subtitle" class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-6">Voici le bilan de vos révisions</p>
+
+                    <div class="grid grid-cols-2 gap-4 w-full max-w-xs mb-6">
+                        <div class="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3 rounded-xl">
+                            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 block mb-1">Réussies</span>
+                            <span id="summary-success-count" class="text-2xl font-black text-emerald-700 dark:text-emerald-300">0</span>
+                        </div>
+                        <div class="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 p-3 rounded-xl">
+                            <span class="text-xs font-bold text-rose-600 dark:text-rose-400 block mb-1">À revoir</span>
+                            <span id="summary-fail-count" class="text-2xl font-black text-rose-700 dark:text-rose-300">0</span>
+                        </div>
+                    </div>
+
+                    <div class="w-full max-w-xs space-y-2">
+                        <button id="btn-redo-failed" onclick="restartFailedOnly()" class="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-md shadow-rose-600/20 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-rotate-left"></i> Refaire les cartes non réussies (<span id="summary-fail-btn-count">0</span>)
+                        </button>
+                        <button onclick="resetStudyProgress()" class="w-full py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                            Tout recommencer
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3D Flip Card -->
+                <div id="card-flipper" class="w-full h-full transform-style-3d relative rounded-2xl shadow-xl shadow-slate-200/60 dark:shadow-none border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                    
+                    <!-- RECTO (FRONT) -->
+                    <div class="absolute inset-0 w-full h-full rounded-2xl p-4 sm:p-5 flex flex-col justify-between backface-hidden bg-white dark:bg-slate-800 overflow-hidden">
+                        <div class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 shrink-0">
+                            <span class="flex items-center gap-1.5"><i class="fa-regular fa-eye"></i> RECTO</span>
+                            <span class="text-slate-400 font-normal text-[10px]"><i class="fa-solid fa-arrows-rotate mr-1"></i> Appuyer pour tourner</span>
+                        </div>
+                        
+                        <!-- Front Title -->
+                        <div class="text-center py-2 shrink-0">
+                            <h2 id="card-front-title" class="text-lg sm:text-xl font-bold text-slate-800 dark:text-white leading-tight">...</h2>
+                        </div>
+
+                        <!-- Front Image Container -->
+                        <div class="flex-1 h-0 w-full flex items-center justify-center overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50 relative">
+                            <img id="card-front-img" src="" alt="Photo Recto" class="max-h-full max-w-full w-auto h-auto object-contain rounded-lg hidden" onerror="onImgError(this, 'front')">
+                            <div id="card-front-img-placeholder" class="text-slate-400 text-xs flex flex-col items-center gap-2 p-4">
+                                <i class="fa-regular fa-image text-3xl opacity-40"></i>
+                                <span id="card-front-msg">Pas d'image recto</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VERSO (BACK) -->
+                    <div class="absolute inset-0 w-full h-full rounded-2xl p-4 sm:p-5 flex flex-col justify-between backface-hidden rotate-y-180 bg-slate-900 text-white dark:bg-slate-950 border-2 border-indigo-500/30 overflow-hidden">
+                        <div class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-indigo-400 shrink-0">
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-lightbulb"></i> VERSO</span>
+                            <span class="text-slate-400 font-normal text-[10px]"><i class="fa-solid fa-arrows-rotate mr-1"></i> Appuyer pour tourner</span>
+                        </div>
+
+                        <!-- Back Title / Description -->
+                        <div class="text-center py-2 shrink-0">
+                            <h2 id="card-back-title" class="text-lg sm:text-xl font-bold text-indigo-100 leading-tight">...</h2>
+                        </div>
+
+                        <!-- Back Image Container -->
+                        <div class="flex-1 h-0 w-full flex items-center justify-center overflow-hidden rounded-xl bg-slate-800/80 border border-slate-700/50 relative">
+                            <img id="card-back-img" src="" alt="Photo Verso" class="max-h-full max-w-full w-auto h-auto object-contain rounded-lg hidden" onerror="onImgError(this, 'back')">
+                            <div id="card-back-img-placeholder" class="text-slate-500 text-xs flex flex-col items-center gap-2 p-4">
+                                <i class="fa-regular fa-image text-3xl opacity-40"></i>
+                                <span id="card-back-msg">Pas d'image verso</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Bottom Evaluation Buttons (Pass / Fail) -->
+            <div class="w-full grid grid-cols-2 gap-3 mt-4">
+                <button onclick="rateCard(false)" id="btn-fail" class="py-3 px-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 text-sm">
+                    <i class="fa-solid fa-xmark text-lg"></i> ❌ À revoir <span class="hidden sm:inline text-[10px] opacity-75">(1)</span>
+                </button>
+                <button onclick="rateCard(true)" id="btn-success" class="py-3 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 text-sm">
+                    <i class="fa-solid fa-check text-lg"></i> ✅ Réussi <span class="hidden sm:inline text-[10px] opacity-75">(2)</span>
+                </button>
+            </div>
+
+            <!-- Keyboard & Gesture Legend -->
+            <div class="mt-3 text-[11px] text-slate-400 dark:text-slate-500 text-center flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+                <span class="sm:hidden"><i class="fa-solid fa-hand-pointer mr-1"></i> Tap pour tourner les cartes</span>
+                <span class="hidden sm:inline"><kbd class="px-1 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">Espace</kbd> Tourner</span>
+                <span class="hidden sm:inline"><kbd class="px-1 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">1</kbd> À revoir</span>
+                <span class="hidden sm:inline"><kbd class="px-1 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">2</kbd> Réussi</span>
+            </div>
+
+        </section>
+
+
+        <!-- ================= MANAGE / FOLDERS & CARDS MODE ================= -->
+        <section id="section-manage" class="hidden flex-1 flex flex-col space-y-6">
+            
+            <!-- FOLDERS MANAGEMENT SECTION -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-folder-closed text-amber-500"></i> Vos Dossiers (Decks)
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Organisez vos thèmes de cartes.</p>
+                    </div>
+                    <button onclick="openFolderModal()" class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs shadow-md shadow-amber-500/20 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-folder-plus"></i> Nouveau Dossier
+                    </button>
+                </div>
+
+                <!-- Folders List Horizontal / Grid -->
+                <div id="folders-grid" class="flex flex-wrap gap-2.5">
+                    <!-- Dynamic Folders Pills -->
+                </div>
+            </div>
+
+            <!-- CARDS MANAGEMENT SECTION -->
+            <div class="flex-1 flex flex-col">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white">Cartes du dossier :</h3>
+                        <select id="manage-folder-filter" onchange="renderManageGrid()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold rounded-xl px-3 py-1.5 focus:outline-none">
+                            <option value="ALL">📁 Tous les dossiers</option>
+                        </select>
+                    </div>
+                    <button onclick="openAddModal()" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-md shadow-sky-600/20 transition flex items-center gap-2 text-xs sm:text-sm">
+                        <i class="fa-solid fa-plus"></i> Nouvelle Carte
+                    </button>
+                </div>
+
+                <!-- Grid Display of Cards -->
+                <div id="cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 flex-1">
+                    <!-- Dynamic cards insertion -->
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ================= FOLDER MODAL ================= -->
+    <div id="modal-folder" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 dark:border-slate-700">
+            <h3 id="modal-folder-title" class="text-lg font-bold text-slate-800 dark:text-white mb-3">Nouveau Dossier</h3>
+            <form onsubmit="saveFolderForm(event)" class="space-y-4">
+                <input type="hidden" id="folder-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nom du dossier *</label>
+                    <input type="text" id="input-folder-name" required placeholder="Ex: Anatomie, Espagnol..." class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeFolderModal()" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-medium">Annuler</button>
+                    <button type="submit" class="px-4 py-1.5 rounded-lg bg-amber-500 text-white font-semibold text-xs shadow">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= ADD / EDIT CARD MODAL ================= -->
+    <div id="modal-card" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-700 my-auto">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+                <h3 id="modal-title" class="text-lg sm:text-xl font-bold text-slate-800 dark:text-white">Ajouter une Flashcard</h3>
+                <button onclick="closeAddModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-lg p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="form-card" onsubmit="saveCardForm(event)" class="space-y-4 sm:space-y-5">
+                <input type="hidden" id="card-id">
+
+                <!-- Folder Selector for this Card -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1"><i class="fa-solid fa-folder text-amber-500 mr-1"></i> Dossier de destination</label>
+                    <select id="input-card-folder" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none font-medium">
+                        <option value="default">📁 Général (Sans dossier)</option>
+                    </select>
+                </div>
+
+                <!-- Grid Recto / Verso inputs -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- RECTO CONFIG -->
+                    <div class="bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                        <h4 class="font-bold text-sky-600 dark:text-sky-400 text-xs sm:text-sm flex items-center gap-1.5">
+                            <i class="fa-regular fa-eye"></i> RECTO (Question / Image)
+                        </h4>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Titre ou Question *</label>
+                            <input type="text" id="input-front-title" required placeholder="Ex: Anatomie du Cœur" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Photo Recto</label>
+                            <div class="space-y-2">
+                                <div id="dropzone-front" onclick="document.getElementById('file-front').click()" class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-sky-500 dark:hover:border-sky-500 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center bg-white dark:bg-slate-800">
+                                    <i class="fa-solid fa-camera text-xl text-slate-400 mb-1"></i>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Prendre / Choisir une photo</span>
+                                    <input type="file" id="file-front" accept="image/*" class="hidden" onchange="handleFileUpload(this, 'front')">
+                                </div>
+                                
+                                <input type="url" id="input-front-url" placeholder="ou URL de l'image..." oninput="previewUrlImage('front')" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none">
+
+                                <!-- Image Preview -->
+                                <div id="preview-front-container" class="relative hidden mt-2 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 h-24 flex items-center justify-center">
+                                    <img id="preview-front-img" src="" class="max-h-full max-w-full object-contain">
+                                    <button type="button" onclick="clearImage('front')" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 shadow">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VERSO CONFIG -->
+                    <div class="bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                        <h4 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm flex items-center gap-1.5">
+                            <i class="fa-solid fa-lightbulb"></i> VERSO (Réponse / Schéma)
+                        </h4>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Réponse ou Explication *</label>
+                            <input type="text" id="input-back-title" required placeholder="Ex: Ventricule gauche & Aorte" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Photo Verso</label>
+                            <div class="space-y-2">
+                                <div id="dropzone-back" onclick="document.getElementById('file-back').click()" class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center bg-white dark:bg-slate-800">
+                                    <i class="fa-solid fa-camera text-xl text-slate-400 mb-1"></i>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Prendre / Choisir une photo</span>
+                                    <input type="file" id="file-back" accept="image/*" class="hidden" onchange="handleFileUpload(this, 'back')">
+                                </div>
+                                
+                                <input type="url" id="input-back-url" placeholder="ou URL de l'image..." oninput="previewUrlImage('back')" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+
+                                <!-- Image Preview -->
+                                <div id="preview-back-container" class="relative hidden mt-2 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 h-24 flex items-center justify-center">
+                                    <img id="preview-back-img" src="" class="max-h-full max-w-full object-contain">
+                                    <button type="button" onclick="clearImage('back')" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 shadow">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                    <button type="button" onclick="closeAddModal()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium text-xs sm:text-sm hover:bg-slate-100 dark:hover:bg-slate-700">Annuler</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs sm:text-sm shadow-md shadow-sky-600/20">Enregistrer la carte</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= IMPORT / EXPORT MODAL ================= -->
+    <div id="modal-export" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between mb-3 border-b border-slate-100 dark:border-slate-700 pb-3">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Sauvegarde & Exportation</h3>
+                <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="overflow-y-auto space-y-4 pr-1 flex-1">
+                <!-- EXPORT SECTION -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Exporter vos données</h4>
+                    
+                    <button onclick="exportJSON()" class="w-full py-3 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm flex items-center justify-between shadow-md shadow-sky-600/20 transition">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-download"></i> Telecharger / Partager le fichier JSON</span>
+                        <i class="fa-solid fa-share-nodes text-xs"></i>
+                    </button>
+
+                    <button onclick="toggleJsonView()" class="w-full py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700">
+                        <span><i class="fa-solid fa-code mr-1.5"></i> Afficher / Copier le code JSON</span>
+                        <i id="json-toggle-icon" class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+
+                    <!-- Textarea fallback for Manual Copy on Mobile -->
+                    <div id="json-code-container" class="hidden space-y-2 pt-1">
+                        <textarea id="json-code-area" readonly rows="5" class="w-full p-2.5 bg-slate-900 text-slate-200 font-mono text-[10px] rounded-xl border border-slate-700 focus:outline-none"></textarea>
+                        <button onclick="copyJsonText()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-copy"></i> Copier tout le JSON dans le presse-papier
+                        </button>
+                    </div>
+                </div>
+
+                <!-- IMPORT SECTION -->
+                <div class="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Importer des cartes</h4>
+                    
+                    <button onclick="document.getElementById('file-import-json').click()" class="w-full py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-semibold text-slate-800 dark:text-white text-xs sm:text-sm flex items-center justify-between transition">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-upload text-indigo-500"></i> Choisir un fichier JSON à importer</span>
+                        <i class="fa-solid fa-file-import text-xs opacity-50"></i>
+                    </button>
+                    <input type="file" id="file-import-json" accept=".json" class="hidden" onchange="importJSON(this)">
+                </div>
+
+                <!-- RESET SAMPLES -->
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
+                    <button onclick="loadSampleCards()" class="w-full py-2 px-3 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 font-semibold text-xs flex items-center justify-between transition">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> Remettre exemples par défaut</span>
+                        <i class="fa-solid fa-rotate text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-end shrink-0">
+                <button onclick="closeExportModal()" class="px-4 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-xs font-semibold">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic Script -->
+    <script>
+        // --- DATA STATE ---
+        let folders = [
+            { id: 'default', name: 'Général' },
+            { id: 'f-science', name: 'Anatomie & Science' }
+        ];
+
+        let cards = [];
+        
+        // Active Study Session State
+        let currentStudyDeck = [];
+        let currentIndex = 0;
+        let isFlipped = false;
+        let activeTab = 'study';
+        let currentFolderFilter = 'ALL';
+
+        let sessionSuccessCount = 0;
+        let sessionFailCount = 0;
+        let failedCardsInSession = [];
+
+        // Temporary Image Storage
+        let currentFrontImg = '';
+        let currentBackImg = '';
+
+        // Touch Gestures
+        let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
+
+        // Sample Initial Cards
+        const SAMPLE_CARDS = [
+            {
+                id: 'sample-1',
+                folderId: 'default',
+                frontTitle: 'Système Solaire - Planète Bleue',
+                frontImg: 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=800&q=80',
+                backTitle: 'La Terre (3ème planète du Soleil)',
+                backImg: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80'
+            },
+            {
+                id: 'sample-2',
+                folderId: 'f-science',
+                frontTitle: 'Anatomie : Cœur Humain',
+                frontImg: 'https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&w=800&q=80',
+                backTitle: 'Organe cardiaque musculaire à 4 cavités',
+                backImg: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=800&q=80'
+            }
+        ];
+
+        // --- INIT ---
+        window.onload = function() {
+            loadStorageData();
+            populateFolderSelects();
+            updateUI();
+
+            // Keyboard Shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT') return;
+                
+                if (activeTab === 'study' && currentStudyDeck.length > 0) {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        flipCard();
+                    } else if (e.code === 'Digit1' || e.code === 'Numpad1') {
+                        rateCard(false);
+                    } else if (e.code === 'Digit2' || e.code === 'Numpad2') {
+                        rateCard(true);
+                    }
+                }
+            });
+
+            // Touch Flip & Swipe Listeners
+            const container = document.getElementById('flashcard-container');
+            container.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+
+            container.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                touchEndY = e.changedTouches[0].screenY;
+                handleSwipeOrTap(e);
+            }, { passive: true });
+
+            setupDragAndDrop('dropzone-front', 'front');
+            setupDragAndDrop('dropzone-back', 'back');
+        };
+
+        function handleSwipeOrTap(e) {
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+
+            if (Math.abs(diffX) < 15 && Math.abs(diffY) < 15) {
+                // Tap gesture -> Flip card
+                flipCard();
+            }
+        }
+
+        // --- TOAST SYSTEM ---
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMsg.textContent = message;
+            if (type === 'error') {
+                toastIcon.className = 'fa-solid fa-circle-exclamation text-rose-400';
+            } else if (type === 'success') {
+                toastIcon.className = 'fa-solid fa-circle-check text-emerald-400';
+            } else {
+                toastIcon.className = 'fa-solid fa-circle-info text-sky-400';
+            }
+
+            toast.classList.remove('translate-y-[-100%]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-[-100%]', 'opacity-0');
+            }, 3000);
+        }
+
+        // --- STORAGE & DATA ---
+        function loadStorageData() {
+            const savedFolders = localStorage.getItem('flashmaster_folders');
+            const savedCards = localStorage.getItem('flashmaster_cards');
+
+            if (savedFolders) {
+                try { folders = JSON.parse(savedFolders); } catch(e) {}
+            }
+            if (savedCards) {
+                try { cards = JSON.parse(savedCards); } catch(e) {}
+            } else {
+                cards = [...SAMPLE_CARDS];
+                saveStorageData();
+            }
+        }
+
+        function saveStorageData() {
+            try {
+                localStorage.setItem('flashmaster_folders', JSON.stringify(folders));
+                localStorage.setItem('flashmaster_cards', JSON.stringify(cards));
+            } catch(e) {
+                showToast('Stockage plein. Pensez à supprimer des images lourdes.', 'error');
+            }
+        }
+
+        function loadSampleCards() {
+            folders = [
+                { id: 'default', name: 'Général' },
+                { id: 'f-science', name: 'Anatomie & Science' }
+            ];
+            cards = [...SAMPLE_CARDS];
+            saveStorageData();
+            populateFolderSelects();
+            resetStudyProgress();
+            closeExportModal();
+            showToast('Exemples réinitialisés !', 'success');
+        }
+
+        // --- FOLDERS MANAGEMENT ---
+        function populateFolderSelects() {
+            const studySelect = document.getElementById('study-folder-select');
+            const manageSelect = document.getElementById('manage-folder-filter');
+            const cardFolderInput = document.getElementById('input-card-folder');
+
+            const currentStudyVal = studySelect.value || 'ALL';
+            const currentManageVal = manageSelect.value || 'ALL';
+
+            studySelect.innerHTML = `<option value="ALL">📁 Tous les dossiers (${cards.length})</option>`;
+            manageSelect.innerHTML = `<option value="ALL">📁 Tous les dossiers (${cards.length})</option>`;
+            cardFolderInput.innerHTML = '';
+
+            folders.forEach(f => {
+                const count = cards.filter(c => (c.folderId || 'default') === f.id).length;
+                studySelect.innerHTML += `<option value="${f.id}">📁 ${f.name} (${count})</option>`;
+                manageSelect.innerHTML += `<option value="${f.id}">📁 ${f.name} (${count})</option>`;
+                cardFolderInput.innerHTML += `<option value="${f.id}">📁 ${f.name}</option>`;
+            });
+
+            studySelect.value = currentStudyVal;
+            manageSelect.value = currentManageVal;
+        }
+
+        function openFolderModal(folderId = null) {
+            document.getElementById('folder-id').value = folderId || '';
+            document.getElementById('modal-folder-title').textContent = folderId ? 'Renommer le dossier' : 'Nouveau Dossier';
+            
+            if (folderId) {
+                const f = folders.find(x => x.id === folderId);
+                document.getElementById('input-folder-name').value = f ? f.name : '';
+            } else {
+                document.getElementById('input-folder-name').value = '';
+            }
+
+            document.getElementById('modal-folder').classList.remove('hidden');
+        }
+
+        function closeFolderModal() {
+            document.getElementById('modal-folder').classList.add('hidden');
+        }
+
+        function saveFolderForm(e) {
+            e.preventDefault();
+            const id = document.getElementById('folder-id').value;
+            const name = document.getElementById('input-folder-name').value.trim();
+
+            if (!name) return;
+
+            if (id) {
+                const f = folders.find(x => x.id === id);
+                if (f) f.name = name;
+            } else {
+                const newFolder = {
+                    id: 'folder-' + Date.now(),
+                    name: name
+                };
+                folders.push(newFolder);
+            }
+
+            saveStorageData();
+            populateFolderSelects();
+            renderFoldersPills();
+            closeFolderModal();
+            showToast('Dossier enregistré', 'success');
+        }
+
+        function deleteFolder(folderId) {
+            if (folderId === 'default') {
+                showToast('Le dossier par défaut ne peut pas être supprimé', 'error');
+                return;
+            }
+            
+            // Reassign cards to default
+            cards.forEach(c => {
+                if (c.folderId === folderId) c.folderId = 'default';
+            });
+
+            folders = folders.filter(f => f.id !== folderId);
+            saveStorageData();
+            populateFolderSelects();
+            renderFoldersPills();
+            renderManageGrid();
+            showToast('Dossier supprimé (cartes déplacées vers Général)', 'info');
+        }
+
+        function renderFoldersPills() {
+            const container = document.getElementById('folders-grid');
+            container.innerHTML = '';
+
+            folders.forEach(f => {
+                const cardCount = cards.filter(c => (c.folderId || 'default') === f.id).length;
+                const pill = document.createElement('div');
+                pill.className = "flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700/70 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200";
+                
+                pill.innerHTML = `
+                    <i class="fa-solid fa-folder text-amber-500"></i>
+                    <span>${f.name}</span>
+                    <span class="px-1.5 py-0.2 bg-slate-200 dark:bg-slate-600 rounded-full text-[10px]">${cardCount}</span>
+                    ${f.id !== 'default' ? `
+                        <button onclick="openFolderModal('${f.id}')" class="text-slate-400 hover:text-sky-500 ml-1"><i class="fa-solid fa-pen text-[10px]"></i></button>
+                        <button onclick="deleteFolder('${f.id}')" class="text-slate-400 hover:text-rose-500"><i class="fa-solid fa-trash text-[10px]"></i></button>
+                    ` : ''}
+                `;
+                container.appendChild(pill);
+            });
+        }
+
+        // --- STUDY MODE CONTROLS ---
+        function onStudyFolderChange() {
+            currentFolderFilter = document.getElementById('study-folder-select').value;
+            resetStudyProgress();
+        }
+
+        function resetStudyProgress() {
+            currentFolderFilter = document.getElementById('study-folder-select').value;
+            
+            if (currentFolderFilter === 'ALL') {
+                currentStudyDeck = [...cards];
+            } else {
+                currentStudyDeck = cards.filter(c => (c.folderId || 'default') === currentFolderFilter);
+            }
+
+            currentIndex = 0;
+            sessionSuccessCount = 0;
+            sessionFailCount = 0;
+            failedCardsInSession = [];
+            
+            document.getElementById('summary-screen').classList.add('hidden');
+            updateStudyCard();
+        }
+
+        function restartFailedOnly() {
+            if (failedCardsInSession.length === 0) return;
+
+            currentStudyDeck = [...failedCardsInSession];
+            currentIndex = 0;
+            sessionSuccessCount = 0;
+            sessionFailCount = 0;
+            failedCardsInSession = [];
+
+            document.getElementById('summary-screen').classList.add('hidden');
+            updateStudyCard();
+            showToast('Reprise des cartes non réussies !', 'info');
+        }
+
+        function flipCard() {
+            if (currentStudyDeck.length === 0) return;
+            isFlipped = !isFlipped;
+            const flipper = document.getElementById('card-flipper');
+            if (isFlipped) {
+                flipper.classList.add('rotate-y-180');
+            } else {
+                flipper.classList.remove('rotate-y-180');
+            }
+        }
+
+        function unflipCardDirectly() {
+            isFlipped = false;
+            document.getElementById('card-flipper').classList.remove('rotate-y-180');
+        }
+
+        function rateCard(success) {
+            if (currentStudyDeck.length === 0 || currentIndex >= currentStudyDeck.length) return;
+
+            const currentCard = currentStudyDeck[currentIndex];
+
+            if (success) {
+                sessionSuccessCount++;
+            } else {
+                sessionFailCount++;
+                failedCardsInSession.push(currentCard);
+            }
+
+            currentIndex++;
+
+            if (currentIndex >= currentStudyDeck.length) {
+                showSummaryScreen();
+            } else {
+                updateStudyCard();
+            }
+        }
+
+        function showSummaryScreen() {
+            unflipCardDirectly();
+            document.getElementById('card-flipper').classList.add('hidden');
+            document.getElementById('summary-screen').classList.remove('hidden');
+
+            const total = sessionSuccessCount + sessionFailCount;
+            const percent = total > 0 ? Math.round((sessionSuccessCount / total) * 100) : 0;
+
+            document.getElementById('summary-subtitle').textContent = `Score de réussite : ${percent}% (${sessionSuccessCount} sur ${total})`;
+            document.getElementById('summary-success-count').textContent = sessionSuccessCount;
+            document.getElementById('summary-fail-count').textContent = sessionFailCount;
+            document.getElementById('summary-fail-btn-count').textContent = sessionFailCount;
+
+            const btnRedo = document.getElementById('btn-redo-failed');
+            if (sessionFailCount === 0) {
+                btnRedo.classList.add('hidden');
+            } else {
+                btnRedo.classList.remove('hidden');
+            }
+
+            // Final progress bar update
+            document.getElementById('progress-text').textContent = `Terminé (${total}/${total})`;
+            document.getElementById('progress-bar-success').style.width = `${(sessionSuccessCount / total) * 100}%`;
+            document.getElementById('progress-bar-fail').style.width = `${(sessionFailCount / total) * 100}%`;
+            document.getElementById('score-success').textContent = sessionSuccessCount;
+            document.getElementById('score-fail').textContent = sessionFailCount;
+        }
+
+        function updateStudyCard() {
+            unflipCardDirectly();
+
+            const emptyMsg = document.getElementById('empty-deck-msg');
+            const flipper = document.getElementById('card-flipper');
+            const summaryScreen = document.getElementById('summary-screen');
+            
+            summaryScreen.classList.add('hidden');
+
+            if (currentStudyDeck.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                flipper.classList.add('hidden');
+                document.getElementById('progress-text').textContent = `Carte 0 / 0`;
+                document.getElementById('progress-bar-success').style.width = `0%`;
+                document.getElementById('progress-bar-fail').style.width = `0%`;
+                document.getElementById('score-success').textContent = '0';
+                document.getElementById('score-fail').textContent = '0';
+                return;
+            }
+
+            emptyMsg.classList.add('hidden');
+            flipper.classList.remove('hidden');
+
+            const card = currentStudyDeck[currentIndex];
+
+            // Set Front Content
+            document.getElementById('card-front-title').textContent = card.frontTitle || 'Sans titre';
+            const frontImgEl = document.getElementById('card-front-img');
+            const frontPlaceholder = document.getElementById('card-front-img-placeholder');
+            document.getElementById('card-front-msg').textContent = "Pas d'image recto";
+
+            if (card.frontImg) {
+                frontImgEl.src = card.frontImg;
+                frontImgEl.classList.remove('hidden');
+                frontPlaceholder.classList.add('hidden');
+            } else {
+                frontImgEl.classList.add('hidden');
+                frontPlaceholder.classList.remove('hidden');
+            }
+
+            // Set Back Content
+            document.getElementById('card-back-title').textContent = card.backTitle || 'Sans réponse';
+            const backImgEl = document.getElementById('card-back-img');
+            const backPlaceholder = document.getElementById('card-back-img-placeholder');
+            document.getElementById('card-back-msg').textContent = "Pas d'image verso";
+
+            if (card.backImg) {
+                backImgEl.src = card.backImg;
+                backImgEl.classList.remove('hidden');
+                backPlaceholder.classList.add('hidden');
+            } else {
+                backImgEl.classList.add('hidden');
+                backPlaceholder.classList.remove('hidden');
+            }
+
+            // Progress Banner Updates
+            const total = currentStudyDeck.length;
+            document.getElementById('progress-text').textContent = `Carte ${currentIndex + 1} / ${total}`;
+            
+            const successPct = total > 0 ? (sessionSuccessCount / total) * 100 : 0;
+            const failPct = total > 0 ? (sessionFailCount / total) * 100 : 0;
+
+            document.getElementById('progress-bar-success').style.width = `${successPct}%`;
+            document.getElementById('progress-bar-fail').style.width = `${failPct}%`;
+            document.getElementById('score-success').textContent = sessionSuccessCount;
+            document.getElementById('score-fail').textContent = sessionFailCount;
+        }
+
+        function onImgError(imgEl, side) {
+            imgEl.classList.add('hidden');
+            const placeholder = document.getElementById(`card-${side}-img-placeholder`);
+            const msgEl = document.getElementById(`card-${side}-msg`);
+            msgEl.textContent = "Erreur de chargement photo";
+            placeholder.classList.remove('hidden');
+        }
+
+        function shuffleDeck() {
+            if (currentStudyDeck.length <= 1) return;
+            for (let i = currentStudyDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [currentStudyDeck[i], currentStudyDeck[j]] = [currentStudyDeck[j], currentStudyDeck[i]];
+            }
+            currentIndex = 0;
+            updateStudyCard();
+            showToast('Dossier actuel mélangé', 'info');
+        }
+
+        // --- TAB MANAGEMENT ---
+        function switchTab(tab) {
+            activeTab = tab;
+            const studyBtn = document.getElementById('tab-study');
+            const manageBtn = document.getElementById('tab-manage');
+            const studySec = document.getElementById('section-study');
+            const manageSec = document.getElementById('section-manage');
+
+            if (tab === 'study') {
+                studyBtn.className = "px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm";
+                manageBtn.className = "px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-1.5";
+                studySec.classList.remove('hidden');
+                manageSec.classList.add('hidden');
+                resetStudyProgress();
+            } else {
+                manageBtn.className = "px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm";
+                studyBtn.className = "px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-1.5";
+                manageSec.classList.remove('hidden');
+                studySec.classList.add('hidden');
+                renderFoldersPills();
+                renderManageGrid();
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('card-count-badge').textContent = cards.length;
+            populateFolderSelects();
+            if (activeTab === 'study') {
+                resetStudyProgress();
+            } else {
+                renderFoldersPills();
+                renderManageGrid();
+            }
+        }
+
+        // --- MANAGE CARDS GRID ---
+        function renderManageGrid() {
+            const grid = document.getElementById('cards-grid');
+            const filterFolderId = document.getElementById('manage-folder-filter').value;
+            grid.innerHTML = '';
+
+            let filteredCards = cards;
+            if (filterFolderId !== 'ALL') {
+                filteredCards = cards.filter(c => (c.folderId || 'default') === filterFolderId);
+            }
+
+            if (filteredCards.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-400">
+                        <i class="fa-solid fa-folder-open text-4xl mb-3"></i>
+                        <p class="text-base font-medium">Aucune carte dans ce dossier.</p>
+                        <button onclick="openAddModal()" class="mt-3 px-4 py-2 bg-sky-600 text-white font-medium text-sm rounded-xl">Créer une carte</button>
+                    </div>
+                `;
+                return;
+            }
+
+            filteredCards.forEach((card) => {
+                const folderObj = folders.find(f => f.id === (card.folderId || 'default'));
+                const folderName = folderObj ? folderObj.name : 'Général';
+
+                const cardEl = document.createElement('div');
+                cardEl.className = "bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition";
+                
+                cardEl.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 truncate max-w-[120px]">
+                                <i class="fa-solid fa-folder mr-1"></i>${folderName}
+                            </span>
+                            <div class="flex items-center gap-1">
+                                <button onclick="openEditModal('${card.id}')" class="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-xs" title="Éditer">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="deleteCard('${card.id}')" class="w-7 h-7 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center text-xs" title="Supprimer">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Card Mini Previews -->
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-700 flex flex-col items-center">
+                                <span class="text-[9px] uppercase font-bold text-sky-500 mb-1">Recto</span>
+                                ${card.frontImg ? `<img src="${card.frontImg}" class="h-14 w-full object-contain mb-1 rounded" onerror="this.style.display='none'">` : '<div class="h-14 flex items-center text-slate-300"><i class="fa-regular fa-image text-lg"></i></div>'}
+                                <p class="font-medium text-slate-700 dark:text-slate-300 text-center truncate w-full" title="${card.frontTitle}">${card.frontTitle}</p>
+                            </div>
+                            
+                            <div class="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-700 flex flex-col items-center">
+                                <span class="text-[9px] uppercase font-bold text-indigo-500 mb-1">Verso</span>
+                                ${card.backImg ? `<img src="${card.backImg}" class="h-14 w-full object-contain mb-1 rounded" onerror="this.style.display='none'">` : '<div class="h-14 flex items-center text-slate-300"><i class="fa-regular fa-image text-lg"></i></div>'}
+                                <p class="font-medium text-slate-700 dark:text-slate-300 text-center truncate w-full" title="${card.backTitle}">${card.backTitle}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(cardEl);
+            });
+        }
+
+        // --- ADD / EDIT CARD MODAL ---
+        function openAddModal() {
+            document.getElementById('card-id').value = '';
+            document.getElementById('modal-title').textContent = 'Nouvelle Flashcard';
+            document.getElementById('input-front-title').value = '';
+            document.getElementById('input-back-title').value = '';
+            document.getElementById('input-front-url').value = '';
+            document.getElementById('input-back-url').value = '';
+
+            const filterVal = document.getElementById('manage-folder-filter').value;
+            document.getElementById('input-card-folder').value = filterVal !== 'ALL' ? filterVal : 'default';
+
+            clearImage('front');
+            clearImage('back');
+            document.getElementById('modal-card').classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            const card = cards.find(c => c.id === id);
+            if (!card) return;
+
+            document.getElementById('card-id').value = card.id;
+            document.getElementById('modal-title').textContent = 'Modifier la Flashcard';
+            document.getElementById('input-card-folder').value = card.folderId || 'default';
+            document.getElementById('input-front-title').value = card.frontTitle || '';
+            document.getElementById('input-back-title').value = card.backTitle || '';
+
+            currentFrontImg = card.frontImg || '';
+            currentBackImg = card.backImg || '';
+
+            if (currentFrontImg) {
+                if (currentFrontImg.startsWith('http')) document.getElementById('input-front-url').value = currentFrontImg;
+                showPreview('front', currentFrontImg);
+            } else clearImage('front');
+
+            if (currentBackImg) {
+                if (currentBackImg.startsWith('http')) document.getElementById('input-back-url').value = currentBackImg;
+                showPreview('back', currentBackImg);
+            } else clearImage('back');
+
+            document.getElementById('modal-card').classList.remove('hidden');
+        }
+
+        function closeAddModal() {
+            document.getElementById('modal-card').classList.add('hidden');
+        }
+
+        // --- IMAGE CANVAS COMPRESSION ---
+        function handleFileUpload(input, side) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 750;
+                    const MAX_HEIGHT = 750;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+                    if (side === 'front') {
+                        currentFrontImg = compressedDataUrl;
+                        document.getElementById('input-front-url').value = '';
+                    } else {
+                        currentBackImg = compressedDataUrl;
+                        document.getElementById('input-back-url').value = '';
+                    }
+                    showPreview(side, compressedDataUrl);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setupDragAndDrop(elementId, side) {
+            const dropzone = document.getElementById(elementId);
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, () => dropzone.classList.add('border-sky-500'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, () => dropzone.classList.remove('border-sky-500'), false);
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                if (dt.files.length > 0) {
+                    const fileInput = document.getElementById(`file-${side}`);
+                    fileInput.files = dt.files;
+                    handleFileUpload(fileInput, side);
+                }
+            });
+        }
+
+        function previewUrlImage(side) {
+            const url = document.getElementById(`input-${side}-url`).value.trim();
+            if (url) {
+                if (side === 'front') currentFrontImg = url;
+                else currentBackImg = url;
+                showPreview(side, url);
+            } else {
+                clearImage(side);
+            }
+        }
+
+        function showPreview(side, src) {
+            const container = document.getElementById(`preview-${side}-container`);
+            const img = document.getElementById(`preview-${side}-img`);
+            img.src = src;
+            container.classList.remove('hidden');
+        }
+
+        function clearImage(side) {
+            if (side === 'front') {
+                currentFrontImg = '';
+                document.getElementById('input-front-url').value = '';
+                document.getElementById('file-front').value = '';
+            } else {
+                currentBackImg = '';
+                document.getElementById('input-back-url').value = '';
+                document.getElementById('file-back').value = '';
+            }
+            document.getElementById(`preview-${side}-container`).classList.add('hidden');
+        }
+
+        // --- CARD SAVE / DELETE ---
+        function saveCardForm(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('card-id').value;
+            const folderId = document.getElementById('input-card-folder').value || 'default';
+            const frontTitle = document.getElementById('input-front-title').value.trim();
+            const backTitle = document.getElementById('input-back-title').value.trim();
+
+            if (id) {
+                const card = cards.find(c => c.id === id);
+                if (card) {
+                    card.folderId = folderId;
+                    card.frontTitle = frontTitle;
+                    card.backTitle = backTitle;
+                    card.frontImg = currentFrontImg;
+                    card.backImg = currentBackImg;
+                }
+            } else {
+                cards.push({
+                    id: 'card-' + Date.now(),
+                    folderId: folderId,
+                    frontTitle: frontTitle,
+                    backTitle: backTitle,
+                    frontImg: currentFrontImg,
+                    backImg: currentBackImg
+                });
+            }
+
+            saveStorageData();
+            closeAddModal();
+            updateUI();
+            showToast('Carte enregistrée !', 'success');
+        }
+
+        function deleteCard(id) {
+            cards = cards.filter(c => c.id !== id);
+            saveStorageData();
+            updateUI();
+            showToast('Carte supprimée', 'info');
+        }
+
+        // --- ROBUST JSON EXPORT & MOBILE SHARE ---
+        function openExportModal() {
+            const jsonText = JSON.stringify({ folders, cards }, null, 2);
+            document.getElementById('json-code-area').value = jsonText;
+            document.getElementById('modal-export').classList.remove('hidden');
+        }
+
+        function closeExportModal() {
+            document.getElementById('modal-export').classList.add('hidden');
+        }
+
+        function toggleJsonView() {
+            const container = document.getElementById('json-code-container');
+            const icon = document.getElementById('json-toggle-icon');
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                icon.className = 'fa-solid fa-chevron-up text-xs';
+            } else {
+                container.classList.add('hidden');
+                icon.className = 'fa-solid fa-chevron-down text-xs';
+            }
+        }
+
+        function copyJsonText() {
+            const area = document.getElementById('json-code-area');
+            area.select();
+            area.setSelectionRange(0, 99999);
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(area.value).then(() => {
+                    showToast('Code JSON copié !', 'success');
+                }).catch(() => {
+                    document.execCommand('copy');
+                    showToast('Code JSON copié !', 'success');
+                });
+            } else {
+                document.execCommand('copy');
+                showToast('Code JSON copié !', 'success');
+            }
+        }
+
+        async function exportJSON() {
+            const payload = { folders, cards };
+            const jsonString = JSON.stringify(payload, null, 2);
+            const fileName = `flashcards-backup-${new Date().toISOString().slice(0,10)}.json`;
+            const blob = new Blob([jsonString], { type: 'application/json' });
+
+            // 1. Try Native Web Share API (Mobile Safari/Chrome file share)
+            if (navigator.share && navigator.canShare) {
+                try {
+                    const file = new File([blob], fileName, { type: 'application/json' });
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            title: 'FlashMaster Backup',
+                            text: 'Sauvegarde de mes flashcards',
+                            files: [file]
+                        });
+                        showToast('Partage réussi !', 'success');
+                        return;
+                    }
+                } catch(err) {
+                    if (err.name !== 'AbortError') {
+                        console.log('Web Share Error, falling back to Blob download', err);
+                    } else {
+                        return; // User cancelled share modal
+                    }
+                }
+            }
+
+            // 2. Fallback to standard Blob ObjectURL download link
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 1000);
+
+            showToast('Téléchargement démarré', 'success');
+        }
+
+        function importJSON(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        if (imported.cards && Array.isArray(imported.cards)) {
+                            cards = imported.cards;
+                            folders = imported.folders || folders;
+                        } else if (Array.isArray(imported)) {
+                            cards = imported;
+                        }
+                        saveStorageData();
+                        updateUI();
+                        closeExportModal();
+                        showToast('Données importées avec succès !', 'success');
+                    } catch(err) {
+                        showToast('Erreur lors de l\'importation JSON', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // --- THEME SWITCH ---
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            document.getElementById('theme-icon').className = isDark ? 'fa-solid fa-sun text-amber-400 text-xs sm:text-sm' : 'fa-solid fa-moon text-xs sm:text-sm';
+        }
+    </script>
+</body>
+</html>
